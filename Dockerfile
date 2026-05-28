@@ -7,7 +7,7 @@ ENV VIXSRC_PROXY_FILE=https://api.proxyscrape.com/v4/free-proxy-list/get?request
 
 EXPOSE 7860
 
-RUN sed -i '\|cd /app/flaresolverr|s|^|#|' /app/entrypoint.sh && \
+RUN sed -i '\|cd /app/flaresolverr|s|^|#|' /app/entrypoint.sh && \dadsd
     sed -i '\|Starting FlareSolverr|s|^|#|' /app/entrypoint.sh
 
 CMD ["/bin/bash", "/app/entrypoint.sh"]
