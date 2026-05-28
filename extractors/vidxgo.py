@@ -53,7 +53,10 @@ _OBFUSCATED_RE = re.compile(
     re.S,
 )
 # Pattern that locates the resolved m3u8 inside the decoded payload.
-_CURRENT_SRC_RE = re.compile(r'currentSrc.+?"(https:[^";]+)"', re.S)
+_CURRENT_SRC_RE = re.compile(
+    r'\bcurrentSrc\s*=\s*["\'](https?:[^"\']+?\.m3u8[^"\']*)["\']',
+    re.S,
+)
 # All <script> tags, capturing their inner contents.
 _SCRIPT_TAG_RE = re.compile(r"<script[^>]*>(.*?)</script>", re.S | re.I)
 
@@ -175,7 +178,9 @@ class VidXgoExtractor:
             cm = _CURRENT_SRC_RE.search(decoded_str)
             if cm:
                 return cm.group(1).replace("\\", "")
-        raise ExtractorError("VidXgo: could not locate currentSrc in any decoded script")
+        if "player-container" in html and "corrupt" in html:
+            raise ExtractorError("VidXgo: source is marked corrupt or not available")
+        raise ExtractorError("VidXgo: could not locate currentSrc m3u8 in any decoded script")
 
     # ------------------------------------------------------------------ manifest transform
 
@@ -246,6 +251,8 @@ class VidXgoExtractor:
         master_text = await self._fetch(m3u8_url, playback_headers)
         if "#EXTM3U" not in master_text:
             raise ExtractorError("VidXgo: extracted URL did not return a valid HLS manifest")
+        if "#EXTINF" in master_text:
+            master_text = self._make_live(master_text)
 
         from urllib.parse import urljoin
         captured_map: dict[str, str] = {}
@@ -279,6 +286,8 @@ class VidXgoExtractor:
             for v_url, v_text in results:
                 if not v_text:
                     continue
+                if "#EXTINF" in v_text:
+                    v_text = self._make_live(v_text)
                 captured_map[v_url] = v_text
 
         captured_map[m3u8_url] = master_text
